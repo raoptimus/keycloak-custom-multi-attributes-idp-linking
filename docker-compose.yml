@@ -1,0 +1,20 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0.3
+    container_name: keycloak
+    environment:
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_HTTP_ENABLED: "true"
+      KEYCLOAK_ADMIN: "admin"
+      KEYCLOAK_ADMIN_PASSWORD: "admin"
+      DEBUG: "true"
+      DEBUG_PORT: "*:5005"
+    command: ["start-dev", "--auto-build"]
+    ports:
+      - 8081:8080
+      - 5005:5005
+    volumes:
+      - ./target/keycloak-custom-multi-attributes-idp-linking-1.0.0-SNAPSHOT.jar:/opt/keycloak/providers/keycloak-custom-multi-attributes-idp-linking-1.0.0-SNAPSHOT.jar
+      # if you want to import a realm or some other things
+      # - ./import/something.json:/opt/keycloak/data/import/something.json
