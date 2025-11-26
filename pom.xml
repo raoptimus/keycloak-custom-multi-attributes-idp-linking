@@ -8,7 +8,7 @@
 
     <artifactId>keycloak-custom-multi-attributes-idp-linking</artifactId>
     <name>keycloak-custom-multi-attributes-idp-linking</name>
-    <description>Extended Keycloak IdpCreateUserIfUniqueAuthenticator with configurable phone attribute lookup, fallback to email and username search, and enhanced logging for improved debugging in identity brokering scenarios.</description>
+    <description>Custom Keycloak authenticator for user matching by configurable phone number with fallback to email and username. Prevents duplicate users during Identity Provider brokering. Easy to configure and fully compatible with Keycloak flows.</description>
 
     <licenses>
         <license>
