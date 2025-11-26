@@ -4,3 +4,5 @@ pom.xml.versionsBackup
 target/
 .env
 keycloak/realm-export.json
+docker-compose.dev.yml
+docker/

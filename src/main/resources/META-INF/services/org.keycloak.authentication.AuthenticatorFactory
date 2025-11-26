@@ -1,1 +1,1 @@
-com.raoptimus.keycloak.authenticators.MultiAttributeUserMatcherFactory
+com.raoptimus.keycloak.authenticators.IdpCreateUserIfUniqueAuthenticatorExtendedFactory

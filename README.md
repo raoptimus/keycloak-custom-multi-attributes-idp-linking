@@ -1,29 +1,32 @@
-# Keycloak Custom Multi Attributes IDP Linking
+# IdpCreateUserIfUniqueAuthenticatorExtended
 
-# Keycloak Phone or Email User Matcher
-
-Keycloak authenticator for linking external identity provider users to existing local accounts using phone number or email with priority-based matching.
+Custom Keycloak authenticator extending the default `IdpCreateUserIfUniqueAuthenticator` to support configurable phone-based user matching (with fallback to email and username) during Identity Provider brokering.
 
 ## Overview
 
-The standard Keycloak First Broker Login flow only matches users by username and email. This extension extends the matching logic to support:
+By default, Keycloak’s First Broker Login flow matches existing users primarily by username and email.  
+`IdpCreateUserIfUniqueAuthenticatorExtended` enhances this behaviour by:
 
-- **Priority-based matching**: Phone number first, then email
-- **No automatic user creation**: Only links to existing users
-- **Flexible configuration**: Works with any external Identity Provider (OIDC, SAML, etc.)
+- Allowing lookup by a **configurable phone attribute** (e.g. `phoneNumber`, `mobile`, etc.)
+- Supporting **phone normalization** with/without leading `+`
+- Falling back to **email** and then **username**
+- Reusing the standard user creation/linking logic of the base authenticator
+- Providing **detailed logging** to simplify debugging
 
 This is useful when:
-- Your external IdP provides phone numbers in addition to email
-- You want phone number to take precedence for user matching
-- You need to prevent automatic user creation and only allow linking to pre-existing accounts
+
+- Your external IdP sends a phone number as a primary or more reliable identifier
+- Phone numbers may come with or without a leading plus sign
+- You want to avoid duplicate users while still using the standard Keycloak brokering flow
 
 ## Features
 
-✅ Searches for users by phone number attribute (priority 1)  
-✅ Falls back to email matching (priority 2)  
-✅ Prevents creation of duplicate users  
-✅ Works with standard Keycloak Handle Existing Account flow  
-✅ Configurable through Keycloak Authentication Flow UI
+- 🔧 Configurable lookup attribute for phone (via authenticator config)
+- 📞 Phone-first matching, then email, then username
+- 📐 Phone normalization: handles numbers with and without leading `+`
+- 🔁 Fully compatible with standard `IdpCreateUserIfUniqueAuthenticator` behaviour
+- 🧩 Can be combined with standard steps like **Detect Existing Broker User** and **Automatically Set Existing User**
+- 🪵 Extra logging of received attributes and matching logic
 
 ## Development
 
@@ -41,9 +44,9 @@ Attach remote jvm debug session on port 5005 (default).
 
 ## Installation
 
-Tested on Keycloak `22.0.3.
+Tested on Keycloak `26.1.3.
 
-### Keycloak >= v22.0.3
+### Keycloak >= v26.1.3
 
 After Packaging the project with,
 
@@ -51,7 +54,7 @@ After Packaging the project with,
 mvn package -f "./pom.xml"
 ```
 
-deploy the `keycloak-custom-multi-attributes-idp-linking-{version}.jar` to `/opt/keycloak/providers` and rebuild keycloak to bring this provider in.
+deploy the `keycloak-custom-multi-attributes-idp-linking-v1.1.0.jar` to `/opt/keycloak/providers` and rebuild keycloak to bring this provider in.
 
 #### Deploy the provider
 
@@ -70,7 +73,7 @@ sudo mv keycloak-phone-email-matcher-{version}.jar /opt/keycloak/providers/;
 **All-in-one (recommended):**
 
 ```sh
-sudo /opt/keycloak/bin/kc.sh start --auto-build;
+sudo /opt/keycloak/bin/kc.sh start --auto-build --debug;
 ```
 
 **build only:**
@@ -81,105 +84,54 @@ sudo /opt/keycloak/bin/kc.sh start --auto-build;
 
 ## Configuration
 
-### 1. Configure Identity Provider Mappers
+### Enable the Authenticator in Flow
 
-Ensure your external Identity Provider maps the phone number claim to a user attribute.
+- Go to **Authentication → Flows**
+- Copy the **First Broker Login** flow and name it (e.g., `Phone First Broker Login`)
+- Replace or add the step for user creation/linking:
+   - Remove original **Create User If Unique**
+   - Add or replace with **IdpCreateUserIfUniqueAuthenticatorExtended**
+- Save the flow
 
-**Example for OIDC Provider:**
+### Configure Phone Attribute
 
-Navigate to: `Identity Providers → [Your Provider] → Mappers`
+- Edit the execution of `IdpCreateUserIfUniqueAuthenticatorExtended` in the flow
+- Create or edit its **Authenticator Config**
+- Set config key (defined in Factory, e.g., `lookup.attribute.phone`) to the phone attribute name you want to use (`phoneNumber` by default)
 
-Create a new mapper:
-- **Mapper Type**: Attribute Importer
-- **Claim**: `phone_number` (or `phone` depending on your IdP)
-- **User Attribute**: `phoneNumber`
-- **Sync Mode Override**: Force
+### Configure Identity Provider Mappers
 
-Don't forget to add the `phone` scope to your Identity Provider:
+- Go to **Identity Providers → [Your Provider] → Mappers**
+- Add or edit mapper to import phone number claim:
+   - Mapper Type: Attribute Importer
+   - Claim: `phone_number` (or as per your IdP)
+   - User Attribute: must match the authenticator config, e.g., `phoneNumber`
+   - Sync Mode Override: Force
 
-Advanced → Default Scopes: openid profile email phone
+- Ensure the `phone` scope is added in the IdP scopes:
+openid profile email phone
 
-### 2. Create Custom Authentication Flow
+### Bind Flow to Identity Provider
 
-Navigate to: `Authentication → Flows`
+- Go to **Identity Providers → [Your Provider] → Advanced**
+- Set **First Login Flow Override** to your new flow (e.g., `Phone First Broker Login`)
 
-1. Click **Copy** on the **First Broker Login** flow
-2. Name it **Phone or Email Linking**
-3. Delete or disable **Create User If Unique** (to prevent user creation)
-4. Add execution: **Phone or Email User Matcher** (from this provider)
-5. Set it as **REQUIRED** or **ALTERNATIVE** depending on your needs:
-    - **REQUIRED**: Shows error if user not found
-    - **ALTERNATIVE**: Passes to next step (e.g., Handle Existing Account)
+## Example Flow
 
-**Example Flow Structure (Auto-linking):**
+Phone First Broker Login
 
-Phone or Email Linking
-├── Phone or Email User Matcher (ALTERNATIVE)
-└── Handle Existing Account (ALTERNATIVE)
+├── Detect Existing Broker User (REQUIRED)
+
+├── IdpCreateUserIfUniqueAuthenticatorExtended (REQUIRED or ALTERNATIVE)
+
+├── Handle Existing Account (REQUIRED or ALTERNATIVE)
+
 └── Automatically Set Existing User (REQUIRED)
 
-**Example Flow Structure (No user creation):**
+This flow:
 
-Phone or Email Linking
-└── Phone or Email User Matcher (REQUIRED)
+- Checks for already linked users using Detect Existing Broker User
+- Finds user by phone/email/username using extended authenticator
+- Automatically sets existing user when found
 
-### 3. Configure Identity Provider
-
-Navigate to: `Identity Providers → [Your Provider] → Advanced`
-
-Set **First Login Flow Override** to: `Phone or Email Linking`
-
-### 4. Verify Configuration
-
-1. Ensure existing users in Keycloak have the `phoneNumber` attribute populated
-2. Test login with external IdP
-3. Check that users are correctly linked based on phone or email
-
-## How It Works
-
-### Matching Priority
-
-1. **Phone Number** (priority 1)
-    - Searches for users with matching `phoneNumber` attribute
-    - If exactly one user found → link account
-
-2. **Email** (priority 2)
-    - If phone not found or no match, searches by email
-    - If user found → link account
-
-3. **No Match**
-    - If configured as REQUIRED → Shows error, prevents login
-    - If configured as ALTERNATIVE → Passes to next authenticator
-
-### Username Handling
-
-If the external IdP doesn't provide a username, the authenticator triggers the **Review Profile** screen where the user can enter missing information.
-
-## Troubleshooting
-
-### User not found
-
-**Problem**: External IdP user cannot log in
-
-**Solution**:
-- Verify the user exists in Keycloak with correct `phoneNumber` or `email` attribute
-- Check IdP mapper configuration
-- Verify `phone` scope is requested from external IdP
-
-### Phone number not matched
-
-**Problem**: Matching by email works, but not by phone
-
-**Solution**:
-- Ensure the claim name in IdP is `phone_number` or `phone`
-- Verify the mapper imports to `phoneNumber` attribute (case-sensitive)
-- Check that existing users have `phoneNumber` attribute set
-
-### Duplicate users created
-
-**Problem**: New users are created instead of linking
-
-**Solution**:
-- Ensure **Create User If Unique** is disabled in your flow
-- Set **Phone or Email User Matcher** before any user creation steps
-- Use **REQUIRED** execution requirement to prevent fallback
+Disable or remove user creation steps to prevent duplicates.

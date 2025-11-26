@@ -4,11 +4,11 @@
 
 
     <groupId>com.raoptimus</groupId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>v1.1.0-SNAPSHOT</version>
 
     <artifactId>keycloak-custom-multi-attributes-idp-linking</artifactId>
     <name>keycloak-custom-multi-attributes-idp-linking</name>
-    <description>Keycloak plugin to link users from external IDP to exiting users based on custom attribute</description>
+    <description>Extended Keycloak IdpCreateUserIfUniqueAuthenticator with configurable phone attribute lookup, fallback to email and username search, and enhanced logging for improved debugging in identity brokering scenarios.</description>
 
     <licenses>
         <license>
@@ -35,7 +35,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.target>17</maven.compiler.target>
         <maven.compiler.source>17</maven.compiler.source>
-        <keycloak.version>22.0.3</keycloak.version>
+        <keycloak.version>26.1.3</keycloak.version>
     </properties>
 
     <dependencies>
@@ -96,7 +96,7 @@
     <distributionManagement>
         <repository>
             <id>github</id>
-            <name>GitHub sd-f Apache Maven Packages</name>
+            <name>GitHub raoptimus Apache Maven Packages</name>
             <url>https://maven.pkg.github.com/raoptimus/keycloak-custom-multi-attributes-idp-linking</url>
         </repository>
     </distributionManagement>
